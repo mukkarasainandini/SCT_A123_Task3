@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GK Quiz Game</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #e0f7fa, #ffe0b2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+  }
+  .quiz-container {
+    background: #fff3e0;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    width: 550px;
+    text-align: center;
+    opacity: 0;
+    transform: scale(0.8);
+    animation: fadeIn 0.8s forwards;
+  }
+  @keyframes fadeIn { to { opacity: 1; transform: scale(1);} }
+  h2 { color: #00796b; margin-bottom: 20px; animation: bounce 1s infinite alternate; }
+  @keyframes bounce {0%{transform:translateY(0);}100%{transform:translateY(-10px);} }
+
+  button{
+    padding: 12px 15px;background:#00796b;border:none;color:white;border-radius:8px;
+    width:80%;margin:15px auto;font-weight:bold;cursor:pointer;transition:0.3s;
+  }
+  button:hover{transform:scale(1.05);background:#004d40;}
+
+  .score-popup{
+    position:absolute;top:-40px;right:20px;background:#28a745;color:white;
+    padding:8px 12px;border-radius:50px;font-weight:bold;opacity:0;
+    transform:translateY(-20px);transition:0.5s;
+  }
+
+  .question{margin-bottom:15px;font-weight:bold;background:#b2dfdb;padding:12px;border-radius:6px;}
+  .options label{
+    display:block;margin-bottom:10px;padding:12px;border-radius:6px;background:#e0f2f1;
+    cursor:pointer;border:1px solid #ccc;transition:0.3s;
+  }
+  .options label:hover{background:#b2dfdb;border-color:#00796b;transform:scale(1.03);}
+  .options label.correct{background:#d4edda;border-color:#28a745;transform:scale(1.05);}
+  .options label.incorrect{background:#f8d7da;border-color:#dc3545;transform:scale(1.05);}
+
+  .timer{font-weight:bold;margin-bottom:10px;color:#d84315;font-size:18px;}
+  .progress-bar-container{background:#ccc;border-radius:25px;overflow:hidden;margin-top:15px;}
+  .progress-bar{height:25px;width:0;background:#00796b;color:#fff;line-height:25px;transition:1s;}
+
+  .review-container{margin-top:20px;text-align:left;}
+  .review-question{font-weight:bold;margin-bottom:5px;}
+  .review-answer{margin-left:15px;margin-bottom:8px;}
+  .review-correct{color:green;font-weight:bold;}
+  .review-incorrect{color:red;font-weight:bold;}
+</style>
+</head>
+<body>
+
+<div class="quiz-container" id="quiz">
+  <h2>GK Quiz Game</h2>
+  <button onclick="startQuiz()">Start Quiz</button>
+</div>
+
+<audio id="bell-sound" src="https://www.soundjay.com/button/sounds/button-3.mp3"></audio>
+
+<script>
+//---------------------------------------------
+// 🔥 Add UNLIMITED GK QUESTIONS Here
+//---------------------------------------------
+const gkQuestions = [
+  { type:"single", question:"Who is the first Prime Minister of India?", options:["Nehru","Patel","Rajendra Prasad","Gandhi"], answer:"Nehru" },
+  { type:"single", question:"Which is the national bird of India?", options:["Parrot","Peacock","Crow","Eagle"], answer:"Peacock" },
+  { type:"single", question:"Which planet is known as the Red Planet?", options:["Earth","Mars","Venus","Jupiter"], answer:"Mars" },
+  { type:"single", question:"Where is Taj Mahal located?", options:["Delhi","Agra","Mumbai","Hyderabad"], answer:"Agra" },
+  { type:"multiple", question:"Which are Indian rivers?", options:["Ganga","Amazon","Yamuna","Krishna"], answer:["Ganga","Yamuna","Krishna"] },
+  { type:"single", question:"Which is the largest ocean?", options:["Indian","Atlantic","Pacific","Arctic"], answer:"Pacific" },
+  { type:"single", question:"What is currency of Japan?", options:["Yen","Euro","Won","Dollar"], answer:"Yen" },
+  { type:"single", question:"Tallest mountain?", options:["K2","Mount Everest","Nanda Devi","Kanchenjunga"], answer:"Mount Everest" },
+  { type:"multiple", question:"Which are input devices?", options:["Keyboard","Scanner","Monitor","Mouse"], answer:["Keyboard","Scanner","Mouse"] },
+  { type:"single", question:"National animal of India?", options:["Lion","Tiger","Elephant","Deer"], answer:"Tiger" },
+];
+
+//------------------------------------------------
+let currentQuiz = [], current=0, score=0, userAnswers=[];
+let timerInterval,timeLeft=15;
+const TOTAL_QUESTIONS = 5;  //Change to 10/15 anytime
+//------------------------------------------------
+
+function startQuiz(){
+  currentQuiz = gkQuestions.sort(()=>Math.random()-0.5).slice(0,TOTAL_QUESTIONS);
+  current=0;score=0;userAnswers=[];
+
+  quiz.innerHTML = `
+    <div class="score-popup" id="score-popup">+1</div>
+    <div class="timer" id="timer">Time: 15s</div>
+    <div id="question-box"></div>
+    <button id="next">Next</button>
+  `;
+  loadQuestion();
+}
+
+function loadQuestion(){
+  let q=currentQuiz[current];
+  let box=document.getElementById("question-box");
+  timeLeft=15;
+  document.getElementById("timer").innerHTML=Time: ${timeLeft}s;
+  clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{
+    timeLeft--; document.getElementById("timer").textContent=Time: ${timeLeft}s;
+    if(timeLeft===0){clearInterval(timerInterval);nextQ(); }
+  },1000);
+
+  box.innerHTML=<div class="question">${q.question}</div>;
+  let html=q.options.map(o=> q.type=="single"
+    ? <label><input type="radio" name="opt" value="${o}"> ${o}</label>
+    : <label><input type="checkbox" value="${o}"> ${o}</label>).join("");
+  box.innerHTML+=<div class="options">${html}</div>;
+  setOptionLogic(q);
+
+  document.getElementById("next").onclick=nextQ;
+}
+
+function setOptionLogic(q){
+  let labels=document.querySelectorAll(".options label");
+  labels.forEach(l=>{
+    l.onclick=()=>{
+      if(q.type=="single"){
+        labels.forEach(b=>b.querySelector("input").disabled=true);
+        let choice=l.textContent.trim();
+        if(choice==q.answer){scoreUp();save(true,choice);}
+        else{l.classList.add("incorrect");save(false,choice,q.answer);}
+      }else{
+        labels.forEach(b=>b.classList.remove("correct","incorrect"));
+        document.querySelectorAll("input:checked").forEach(c=>{
+          q.answer.includes(c.value) ? c.parentNode.classList.add("correct")
+                                     : c.parentNode.classList.add("incorrect");
+        })
+      }
+    }
+  })
+}
+
+function scoreUp(){
+  score++;
+  let pop=document.getElementById("score-popup");
+  pop.style.opacity="1";pop.style.transform="translateY(-60px)";
+  setTimeout(()=>{pop.style.opacity="0";pop.style.transform="translateY(-20px)";},700);
+  document.getElementById("bell-sound").play();
+}
+
+function save(correct,selected,real){
+  userAnswers.push({question:currentQuiz[current].question,correct,selected,answer:real});
+}
+
+function nextQ(){
+  clearInterval(timerInterval);
+  let q=currentQuiz[current];
+  
+  if(q.type=="multiple"){
+    let sel=[...document.querySelectorAll("input:checked")].map(v=>v.value);
+    let ok=JSON.stringify(sel.sort())===JSON.stringify(q.answer.sort());
+    if(ok) scoreUp();
+    save(ok,sel,q.answer);
+  }
+
+  current++;
+  current<TOTAL_QUESTIONS ? loadQuestion() : finish();
+}
+
+function finish(){
+  let box=document.getElementById("question-box");
+  document.getElementById("next").style.display="none";
+  document.getElementById("timer").style.display="none";
+
+  box.innerHTML=`<h2>Your Score: ${score}/${TOTAL_QUESTIONS}</h2>
+  <div class="progress-bar-container">
+    <div class="progress-bar" style="width:${score/TOTAL_QUESTIONS*100}%">${Math.round(score/TOTAL_QUESTIONS*100)}%</div>
+  </div>`;
+
+  let review=<div class="review-container"><h3>Answer Review:</h3>;
+  userAnswers.forEach(r=>{
+    review+=<div class="review-question">${r.question}</div>;
+    review+=r.correct?<div class="review-answer review-correct">Correct ✔</div>
+                     :<div class="review-answer review-incorrect">Wrong ❌ (Right: ${r.answer})</div>;
+  });
+  review+="</div>";
+  box.innerHTML+=review;
+}
+</script>
+
+</body>
+</html>
